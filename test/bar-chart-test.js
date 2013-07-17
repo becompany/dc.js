@@ -516,10 +516,11 @@ suite.addBatch({'ordinal bar chart': {
         assert.match(d3.select(chart.selectAll("rect.bar")[0][5]).attr("x"), /467.\d+/);
     },
     'should fade deselected bars': function (chart) {
-        chart.filter("Ontario").redraw();
+        chart.filter("Ontario").filter("Colorado").redraw();
         assert.isTrue(d3.select(chart.selectAll("rect.bar")[0][0]).classed("deselected"));
+        assert.isFalse(d3.select(chart.selectAll("rect.bar")[0][1]).classed("deselected"));
         assert.isFalse(d3.select(chart.selectAll("rect.bar")[0][5]).classed("deselected"));
-        assert.equal(stateDimension.top(Infinity).length, 2);
+        assert.equal(stateDimension.top(Infinity).length, 3);
     },
     teardown: function (topic) {
         resetAllFilters();
@@ -729,13 +730,13 @@ suite.addBatch({'clip path': {
     },
     'clip rect size should be correct': function (chart) {
         var rect = chart.select("defs clipPath rect");
-        assert.equal(rect.attr("width"), 1020);
-        assert.equal(rect.attr("height"), 160);
+        assert.equal(rect.attr("width"), 1030);
+        assert.equal(rect.attr("height"), 170);
     },
     'clip rect position should be correct': function (chart) {
         var rect = chart.select("defs clipPath rect");
-        assert.equal(rect.attr("x"), 30);
-        assert.equal(rect.attr("y"), 10);
+        assert.equal(rect.attr("x"), 25);
+        assert.equal(rect.attr("y"), 5);
     },
     'clip id should be correct': function (chart) {
         assert.equal(chart.select("defs clipPath").attr("id"), "chart-clip-path-clip");

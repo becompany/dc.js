@@ -143,12 +143,13 @@ suite.addBatch({
             },
             'highlight selected row': function (chart) {
                 chart.filter('66');
+                chart.filter('22');
                 chart.render();
                 chart.selectAll("g.row rect").each(function (d) {
-                    if (d.key == '66')
-                        assert.isTrue(d3.select(this).attr('class').indexOf('selected') >= 0);
+                    if (d.key == 66 || d.key == 22)
+                        assert.equal(d3.select(this).attr('class'), 'selected');
                     else
-                        assert.isTrue(d3.select(this).attr('class').indexOf('deselected') >= 0);
+                        assert.equal(d3.select(this).attr('class'), 'deselected');
                 });
             },
             'filter info generated after slice selection': function (chart) {
@@ -229,18 +230,18 @@ suite.addBatch({
         'custom title & label generation': {
             topic: function (chart) {
                 var chart = buildChart("pie-chart-custom-label-title");
+
                 chart.title(function (d) {
                     return "custom title";
-                })
-                    .label(function (d) {
-                        return "custom label";
-                    });
+                }).label(function (d) {
+                    return "custom label";
+                });
 
                 chart.render();
                 return chart;
             },
 
-            'should render corret number of label': function (chart) {
+            'should render correct number of label': function (chart) {
                 assert.equal(chart.selectAll("text.row")[0].length, 5);
             },
             'custom function should be used to dynamically generate label': function (chart) {
