@@ -146,15 +146,14 @@ dc.barChart = function (parent, chartGroup) {
 
     function barX(bar, data, groupIndex) {
         setGroupIndexToBar(bar, groupIndex);
+        console.log("group width", _groupWidth);
         var
-          position = _chart.x()(_chart.keyAccessor()(data)) + _chart.margins().left,
-          barW = barWidth();
-        if (_centerBar)
-            position -= barW / 2;
-        if (_mode === _modes.side_by_side) {
-          position = position - _groupWidth / 2 + (_barWidth + _groupGap) * groupIndex;
-        }
-        return position;
+          x = _chart.x()(_chart.keyAccessor()(data)) + _chart.margins().left,
+          groupX = _centerBar ? x - _groupWidth / 2 : x;
+        
+        return _mode === _modes.side_by_side
+          ? groupX + (barWidth() + _groupGap) * groupIndex
+          : groupX;
     }
 
     function getGroupIndexFromBar(bar) {
@@ -225,6 +224,21 @@ dc.barChart = function (parent, chartGroup) {
 
     dc.override(_chart, "prepareOrdinalXAxis", function () {
         return this._prepareOrdinalXAxis(_chart.xUnitCount() + 1);
+    });
+    
+    dc.override(_chart, "yAxisMax", function() {
+      if (_mode === _modes.stack) {
+        return this._yAxisMax();
+      }
+      else {
+        var max = d3.max(_chart.allGroups(), function(group, groupIndex) {
+          return dc.utils.groupMax(group, _chart.getValueAccessorByIndex(groupIndex));
+        });
+
+        max = dc.utils.add(max, _chart.yAxisPadding());
+
+        return max;
+      }
     });
 
     return _chart.anchor(parent, chartGroup);
