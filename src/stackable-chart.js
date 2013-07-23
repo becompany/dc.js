@@ -15,6 +15,12 @@ dc.stackableChart = function (_chart) {
         return _chart;
     };
 
+    _chart.clearGroups = function() {
+      this.group(null);
+      _groupStack.clear();
+      return this;
+    }
+
     _chart.expireCache = function(){
         _allGroups = null;
         _allValueAccessors = null;
