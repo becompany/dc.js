@@ -82,13 +82,24 @@ dc.stackableChart = function (_chart) {
     };
 
     _chart.yAxisMax = function () {
-        var max = 0;
         var allGroups = _chart.allGroups();
+        var data = _.map(allGroups, function(g) {
+          return g.all();
+        });
+        
+        var max = _.reduce(data[0], function(memo, ignore, dataIndex) {
+          var aggregatedVal = _.reduce(data, function(memo, groupData, groupIndex) {
+            return memo + getValueFromData(groupIndex, groupData[dataIndex]);
+          }, 0);
+          return Math.max(memo, aggregatedVal);
+        }, 0);
 
+        /*
         for (var groupIndex = 0; groupIndex < allGroups.length; ++groupIndex) {
             var group = allGroups[groupIndex];
             max += dc.utils.groupMax(group, _chart.getValueAccessorByIndex(groupIndex));
         }
+        */
 
         max = dc.utils.add(max, _chart.yAxisPadding());
 

@@ -9,11 +9,7 @@ dc.barChart = function (parent, chartGroup) {
     var _groupGap = DEFAULT_GAP_WITHIN_GROUP;
     var _centerBar = false;
     
-    var _modes = {
-        side_by_side: 'side-by-side',
-        stack: 'stack'
-    }
-    var _mode = _modes.side_by_side;
+    var _mode = dc.barChart.modes.stack;
 
     var _numberOfBars;
     var _barWidth;
@@ -52,7 +48,7 @@ dc.barChart = function (parent, chartGroup) {
     }
 
     function groupGap() {
-      return _mode === _modes.stack ? _barGap : _groupGap;
+      return _mode === dc.barChart.modes.stack ? _barGap : _groupGap;
     }
     
     function calculateBarWidth(offset) {
@@ -68,10 +64,10 @@ dc.barChart = function (parent, chartGroup) {
             _groupWidth = w;
             
             switch (_mode) {
-            case _modes.stack:
+            case dc.barChart.modes.stack:
               _barWidth = _groupWidth;
               break;
-            case _modes.side_by_side:
+            case dc.barChart.modes.side_by_side:
               var numGroups = _chart.allGroups().length;
               _barWidth = (_groupWidth - (numGroups - 1) * _groupGap) / numGroups;
             }
@@ -146,12 +142,11 @@ dc.barChart = function (parent, chartGroup) {
 
     function barX(bar, data, groupIndex) {
         setGroupIndexToBar(bar, groupIndex);
-        console.log("group width", _groupWidth);
         var
           x = _chart.x()(_chart.keyAccessor()(data)) + _chart.margins().left,
           groupX = _centerBar ? x - _groupWidth / 2 : x;
         
-        return _mode === _modes.side_by_side
+        return _mode === dc.barChart.modes.side_by_side
           ? groupX + (barWidth() + _groupGap) * groupIndex
           : groupX;
     }
@@ -162,7 +157,7 @@ dc.barChart = function (parent, chartGroup) {
 
     function barY(bar, data, dataIndex) {
         var groupIndex = getGroupIndexFromBar(bar);
-        return _mode === _modes.stack
+        return _mode === dc.barChart.modes.stack
           ? _chart.getChartStack().getDataPoint(groupIndex, dataIndex)
           : _chart.baseLineY() - _chart.dataPointHeight(data, groupIndex) + _chart.margins().top;
     }
@@ -210,6 +205,12 @@ dc.barChart = function (parent, chartGroup) {
         return _chart;
     };
 
+    _chart.mode = function(_) {
+      if (!arguments.length) return _mode;
+      _mode = _;
+      return _chart;
+    }
+
     _chart.extendBrush = function () {
         var extent = _chart.brush().extent();
         if (_chart.round() && !_centerBar) {
@@ -227,7 +228,7 @@ dc.barChart = function (parent, chartGroup) {
     });
     
     dc.override(_chart, "yAxisMax", function() {
-      if (_mode === _modes.stack) {
+      if (_mode === dc.barChart.modes.stack) {
         return this._yAxisMax();
       }
       else {
@@ -243,3 +244,5 @@ dc.barChart = function (parent, chartGroup) {
 
     return _chart.anchor(parent, chartGroup);
 };
+
+dc.barChart.modes = { stack: 0, side_by_side: 1 };
