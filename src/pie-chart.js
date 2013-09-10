@@ -32,6 +32,8 @@ dc.pieChart = function (parent, chartGroup) {
             return topRows;
         }
     }
+    
+    _chart.getDataWithinXDomain = assemblePieData;
 
     _chart.label(function (d) {
         return _chart.keyAccessor()(d.data);
