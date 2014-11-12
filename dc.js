@@ -1658,6 +1658,12 @@ dc.stackableChart = function (_chart) {
         return _chart;
     };
 
+    _chart.clearGroups = function() {
+      this.group(null);
+      _groupStack.clear();
+      return this;
+    }
+
     _chart.expireCache = function(){
         _allGroups = null;
         _allValueAccessors = null;
@@ -1719,13 +1725,24 @@ dc.stackableChart = function (_chart) {
     };
 
     _chart.yAxisMax = function () {
-        var max = 0;
         var allGroups = _chart.allGroups();
+        var data = _.map(allGroups, function(g) {
+          return g.all();
+        });
+        
+        var max = _.reduce(data[0], function(memo, ignore, dataIndex) {
+          var aggregatedVal = _.reduce(data, function(memo, groupData, groupIndex) {
+            return memo + getValueFromData(groupIndex, groupData[dataIndex]);
+          }, 0);
+          return Math.max(memo, aggregatedVal);
+        }, 0);
 
+        /*
         for (var groupIndex = 0; groupIndex < allGroups.length; ++groupIndex) {
             var group = allGroups[groupIndex];
             max += dc.utils.groupMax(group, _chart.getValueAccessorByIndex(groupIndex));
         }
+        */
 
         max = dc.utils.add(max, _chart.yAxisPadding());
 
@@ -2055,6 +2072,8 @@ dc.pieChart = function (parent, chartGroup) {
             return topRows;
         }
     }
+    
+    _chart.getDataWithinXDomain = assemblePieData;
 
     _chart.label(function (d) {
         return _chart.keyAccessor()(d.data);
@@ -2359,11 +2378,15 @@ dc.pieChart = function (parent, chartGroup) {
 dc.barChart = function (parent, chartGroup) {
     var MIN_BAR_WIDTH = 1;
     var DEFAULT_GAP_BETWEEN_BARS = 2;
+    var DEFAULT_GAP_WITHIN_GROUP = 2;
 
     var _chart = dc.stackableChart(dc.coordinateGridChart({}));
 
     var _gap = DEFAULT_GAP_BETWEEN_BARS;
+    var _groupGap = DEFAULT_GAP_WITHIN_GROUP;
     var _centerBar = false;
+    
+    var _mode = dc.barChart.modes.stack;
 
     var _numberOfBars;
     var _barWidth;
@@ -2371,6 +2394,7 @@ dc.barChart = function (parent, chartGroup) {
     _chart.resetBarProperties = function () {
         _numberOfBars = null;
         _barWidth = null;
+        _groupWidth = null;
         getNumberOfBars();
         barWidth();
     }
@@ -2388,7 +2412,7 @@ dc.barChart = function (parent, chartGroup) {
     function generateBarsPerGroup(groupIndex, group) {
         var data = _chart.getDataWithinXDomain(group);
 
-        calculateBarWidth(_chart.x()(_chart.keyAccessor()(data[0])));
+        calculateBarWidth(_chart.x()(_chart.keyAccessor()(data.length === 0 ? 0 : data[0])));
 
         var bars = _chart.chartBodyG().selectAll("rect." + dc.constants.STACK_CLASS + groupIndex)
             .data(data);
@@ -2400,17 +2424,30 @@ dc.barChart = function (parent, chartGroup) {
         deleteBars(bars);
     }
 
+    function groupGap() {
+      return _mode === dc.barChart.modes.stack ? _barGap : _groupGap;
+    }
+    
     function calculateBarWidth(offset) {
         if (_barWidth == null) {
             var numberOfBars = _chart.isOrdinal() ? getNumberOfBars() + 1 : getNumberOfBars();
 
             var w = Math.floor((_chart.xAxisLength() - offset - (numberOfBars - 1) * _gap) / numberOfBars);
 
-
-            if (isNaN(w) || w < MIN_BAR_WIDTH)
+            if (isNaN(w) || w < MIN_BAR_WIDTH) {
                 w = MIN_BAR_WIDTH;
-
-            _barWidth = w;
+            }
+            
+            _groupWidth = w;
+            
+            switch (_mode) {
+            case dc.barChart.modes.stack:
+              _barWidth = _groupWidth;
+              break;
+            case dc.barChart.modes.side_by_side:
+              var numGroups = _chart.allGroups().length;
+              _barWidth = (_groupWidth - (numGroups - 1) * _groupGap) / numGroups;
+            }
         }
     }
 
@@ -2482,10 +2519,13 @@ dc.barChart = function (parent, chartGroup) {
 
     function barX(bar, data, groupIndex) {
         setGroupIndexToBar(bar, groupIndex);
-        var position = _chart.x()(_chart.keyAccessor()(data)) + _chart.margins().left;
-        if (_centerBar)
-            position -= barWidth() / 2;
-        return position;
+        var
+          x = _chart.x()(_chart.keyAccessor()(data)) + _chart.margins().left,
+          groupX = _centerBar ? x - _groupWidth / 2 : x;
+        
+        return _mode === dc.barChart.modes.side_by_side
+          ? groupX + (barWidth() + _groupGap) * groupIndex
+          : groupX;
     }
 
     function getGroupIndexFromBar(bar) {
@@ -2494,7 +2534,9 @@ dc.barChart = function (parent, chartGroup) {
 
     function barY(bar, data, dataIndex) {
         var groupIndex = getGroupIndexFromBar(bar);
-        return _chart.getChartStack().getDataPoint(groupIndex, dataIndex);
+        return _mode === dc.barChart.modes.stack
+          ? _chart.getChartStack().getDataPoint(groupIndex, dataIndex)
+          : _chart.baseLineY() - _chart.dataPointHeight(data, groupIndex) + _chart.margins().top;
     }
 
     _chart.fadeDeselectedArea = function () {
@@ -2540,6 +2582,12 @@ dc.barChart = function (parent, chartGroup) {
         return _chart;
     };
 
+    _chart.mode = function(_) {
+      if (!arguments.length) return _mode;
+      _mode = _;
+      return _chart;
+    }
+
     _chart.extendBrush = function () {
         var extent = _chart.brush().extent();
         if (_chart.round() && !_centerBar) {
@@ -2555,9 +2603,26 @@ dc.barChart = function (parent, chartGroup) {
     dc.override(_chart, "prepareOrdinalXAxis", function () {
         return this._prepareOrdinalXAxis(_chart.xUnitCount() + 1);
     });
+    
+    dc.override(_chart, "yAxisMax", function() {
+      if (_mode === dc.barChart.modes.stack) {
+        return this._yAxisMax();
+      }
+      else {
+        var max = d3.max(_chart.allGroups(), function(group, groupIndex) {
+          return dc.utils.groupMax(group, _chart.getValueAccessorByIndex(groupIndex));
+        });
+
+        max = dc.utils.add(max, _chart.yAxisPadding());
+
+        return max;
+      }
+    });
 
     return _chart.anchor(parent, chartGroup);
 };
+
+dc.barChart.modes = { stack: 0, side_by_side: 1 };
 dc.lineChart = function(parent, chartGroup) {
     var AREA_BOTTOM_PADDING = 1;
     var DEFAULT_DOT_RADIUS = 5;
