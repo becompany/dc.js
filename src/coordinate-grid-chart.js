@@ -24,7 +24,6 @@ dc.coordinateGridChart = function (_chart) {
     var _yElasticity = false;
     var _yTickFormat;
 
-    var _filter;
     var _brush = d3.svg.brush();
     var _brushOn = true;
     var _round;
@@ -35,16 +34,21 @@ dc.coordinateGridChart = function (_chart) {
     var _refocused = false;
     var _unitCount;
 
+    var _rangeChart;
+    var _focusChart;
+
+    var _mouseZoomable = false;
+    var _clipPadding = 5;
+
     _chart.resetUnitCount = function () {
         _unitCount = null;
         _chart.xUnitCount();
     }
 
-    var _rangeSelChart;  // chart that's used for range selection on this chart
-
-    _chart.rangeSelChart = function (_) {
-        if (!arguments.length) return _rangeSelChart;
-        _rangeSelChart = _;
+    _chart.rangeChart = function (_) {
+        if (!arguments.length) return _rangeChart;
+        _rangeChart = _;
+        _rangeChart.focusChart(_chart);
         return _chart;
     }
 
@@ -65,6 +69,12 @@ dc.coordinateGridChart = function (_chart) {
     _chart.g = function (_) {
         if (!arguments.length) return _g;
         _g = _;
+        return _chart;
+    };
+
+    _chart.mouseZoomable = function (z) {
+        if (!arguments.length) return _mouseZoomable;
+        _mouseZoomable = z;
         return _chart;
     };
 
@@ -386,27 +396,19 @@ dc.coordinateGridChart = function (_chart) {
         return _chart;
     };
 
-    _chart.filter = function (_) {
-        if (!arguments.length) return _filter;
+    dc.override(_chart, "filter", function (_) {
+        if (!arguments.length) return _chart._filter();
+
+        _chart._filter(_);
 
         if (_) {
-            _filter = _;
             _chart.brush().extent(_);
-            _chart.dimension().filter(_);
-            _chart.turnOnControls();
         } else {
-            _filter = null;
             _chart.brush().clear();
-            _chart.dimension().filterAll();
-            _chart.turnOffControls();
-            // restore orig domain in case it was expanded by drag action
-            _chart.focus(_chart.xOriginalDomain());
         }
 
-        _chart.invokeFilteredListener(_chart, _);
-
         return _chart;
-    };
+    });
 
     _chart.brush = function (_) {
         if (!arguments.length) return _brush;
@@ -434,7 +436,7 @@ dc.coordinateGridChart = function (_chart) {
             gBrush.selectAll("rect").attr("height", brushHeight());
             gBrush.selectAll(".resize").append("path").attr("d", _chart.resizeHandlePath);
 
-            if (_filter) {
+            if (_chart.hasFilter()) {
                 _chart.redrawBrush(g);
             }
         }
@@ -471,6 +473,7 @@ dc.coordinateGridChart = function (_chart) {
             });
         } else {
             dc.events.trigger(function () {
+                _chart.filter(null);
                 _chart.filter([extent[0], extent[1]]);
                 dc.redrawAll(_chart.chartGroup());
             }, dc.constants.EVENT_DELAY);
@@ -515,16 +518,22 @@ dc.coordinateGridChart = function (_chart) {
         return _chart.anchor().replace('#', '') + "-clip";
     }
 
+    _chart.clipPadding = function (p) {
+        if (!arguments.length) return _clipPadding;
+        _clipPadding = p;
+        return _chart;
+    };
+
     function generateClipPath() {
         var defs = dc.utils.appendOrSelect(_parent, "defs");
 
         var chartBodyClip = dc.utils.appendOrSelect(defs, "clipPath").attr("id", getClipPathId());
 
         dc.utils.appendOrSelect(chartBodyClip, "rect")
-            .attr("x", _chart.margins().left)
-            .attr("y", _chart.margins().top)
-            .attr("width", _chart.xAxisLength())
-            .attr("height", _chart.yAxisHeight());
+            .attr("x", _chart.margins().left - _clipPadding)
+            .attr("y", _chart.margins().top - _clipPadding)
+            .attr("width", _chart.xAxisLength() + _clipPadding*2)
+            .attr("height", _chart.yAxisHeight() + _clipPadding*2);
     }
 
     _chart.doRender = function () {
@@ -548,41 +557,41 @@ dc.coordinateGridChart = function (_chart) {
 
             _chart.renderBrush(_chart.g());
 
-            _chart.root().call(d3.behavior.zoom()
-                    .x(_chart.x())
-                    .scaleExtent([1, 100])
-                    .on("zoom", function() {
-                        _chart.focus(_chart.x().domain());
-                        _chart.invokeZoomedListener(_chart);
-                        updateRangeSelChart();
-                    }));
-
-            _chart.chartBodyG().call(d3.behavior.drag()
-                    .on("drag", function() {
-                        var deltaX = d3.event.dx;
-                        var curDomain = _chart.x().domain();
-                        var xMin = _chart.x()(curDomain[0]);
-                        var xMax = _chart.x()(curDomain[1]);
-                        _chart.focus([_chart.x().invert(xMin - deltaX), _chart.x().invert(xMax - deltaX)]);
-                        _chart.invokeDraggedListener(_chart);
-                        updateRangeSelChart();
-                    }));
-
-            function updateRangeSelChart() {
-                if (_rangeSelChart) {
-                    var refDom = _chart.x().domain();
-                    var origDom = _rangeSelChart.xOriginalDomain();
-                    var newDom = [
-                        refDom[0] < origDom[0] ? refDom[0] : origDom[0],
-                        refDom[1] > origDom[1] ? refDom[1] : origDom[1]];
-                    _rangeSelChart.focus(newDom);
-                    _rangeSelChart.filter(refDom);
-                }
-            }
+            enableMouseZoom();
         }
 
         return _chart;
     };
+
+    function enableMouseZoom() {
+        if (_mouseZoomable) {
+            _chart.root().call(d3.behavior.zoom()
+                .x(_chart.x())
+                .scaleExtent([1, 100])
+                .on("zoom", function () {
+                    _chart.focus(_chart.x().domain());
+                    _chart.invokeZoomedListener(_chart);
+                    updateRangeSelChart();
+                }));
+        }
+    }
+
+    function updateRangeSelChart() {
+        if (_rangeChart) {
+            var refDom = _chart.x().domain();
+            var origDom = _rangeChart.xOriginalDomain();
+            var newDom = [
+                refDom[0] < origDom[0] ? refDom[0] : origDom[0],
+                refDom[1] > origDom[1] ? refDom[1] : origDom[1]];
+            _rangeChart.focus(newDom);
+            _rangeChart.filter(null);
+            _rangeChart.filter(refDom);
+
+            dc.events.trigger(function () {
+                dc.redrawAll(_chart.chartGroup());
+            });
+        }
+    }
 
     _chart.doRedraw = function () {
         prepareXAxis(_chart.g());
@@ -658,6 +667,18 @@ dc.coordinateGridChart = function (_chart) {
 
     _chart.refocused = function () {
         return _refocused;
+    };
+
+    _chart.focusChart = function (c) {
+        if (!arguments.length) return _focusChart;
+        _focusChart = c;
+        _chart.on("filtered", function (chart) {
+            dc.events.trigger(function () {
+                _focusChart.focus(chart.filter());
+                dc.redrawAll(chart.chartGroup());
+            });
+        });
+        return _chart;
     };
 
     return _chart;

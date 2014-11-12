@@ -6,7 +6,7 @@ dc.abstractBubbleChart = function (_chart) {
     _chart.BUBBLE_CLASS = "bubble";
     _chart.MIN_RADIUS = 10;
 
-    _chart = dc.selectableChart(dc.colorChart(_chart));
+    _chart = dc.colorChart(_chart);
 
     _chart.renderLabel(true);
     _chart.renderTitle(false);
@@ -125,7 +125,6 @@ dc.abstractBubbleChart = function (_chart) {
 
     _chart.updateBubbleColor = function (d, i) {
         // a work around to get correct node index since
-        // d3 does not send i correctly here
         return _chart.getColor(d, this[dc.constants.NODE_INDEX_NAME]);
     };
 
@@ -146,14 +145,14 @@ dc.abstractBubbleChart = function (_chart) {
     };
 
     _chart.isSelectedNode = function (d) {
-        return _chart.filter() == d.key;
+        return _chart.hasFilter(d.key);
     };
 
     _chart.onClick = function (d) {
         var filter = d.key;
         dc.events.trigger(function () {
             _chart.filter(filter);
-            dc.redrawAll(_chart.group());
+            dc.redrawAll(_chart.chartGroup());
         });
     };
 

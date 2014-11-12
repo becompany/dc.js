@@ -666,7 +666,7 @@ var pieChartValue = dc.pieChart("#pie-chart-value")
         .innerRadius(40)
         .dimension(valueDimension)
         .group(valueGroup)
-        .slicesCap(3)
+//        .slicesCap(3)
         .label(function(d) {
             return d.data.key;
         })
@@ -799,14 +799,7 @@ ordinalBarChart.width(500)
         .group(stateGroup)
         .elasticY(true)
         .x(d3.scale.ordinal().domain(["California", "Colorado", "Delaware", "Mississippi", "Oklahoma", "Ontario"]))
-        .xUnits(dc.units.ordinal)
-        .renderlet(function(chart){
-            var colors =d3.scale.ordinal().domain(["California", "Colorado", "Delaware", "Mississippi", "Oklahoma", "Ontario"])
-                .range(["steelblue", "brown", "red", "green", "yellow", "grey"]);
-            chart.selectAll('rect.bar').each(function(d){
-                 d3.select(this).attr("style", "fill: " + colors(d.key));
-            });
-        });
+        .xUnits(dc.units.ordinal);
 
 var ordinalLineChart = dc.lineChart("#ordinal-line-chart");
 ordinalLineChart.width(500)
@@ -877,6 +870,7 @@ rowChart.width(1100)
         .group(valueGroup)
         .renderTitle(true)
         .renderLabel(true)
+        .title(function(d){return d.value;})
         .colors(d3.scale.category20b());
 
 dc.dataCount(".dc-data-count")
