@@ -1,5 +1,5 @@
 dc.barChart = function (parent, chartGroup) {
-    var MIN_BAR_WIDTH = 1;
+    var MIN_BAR_WIDTH = 2;
     var DEFAULT_GAP_BETWEEN_BARS = 2;
     var DEFAULT_GAP_WITHIN_GROUP = 2;
 
@@ -71,6 +71,7 @@ dc.barChart = function (parent, chartGroup) {
               var numGroups = _chart.allGroups().length;
               _barWidth = (_groupWidth - (numGroups - 1) * _groupGap) / numGroups;
             }
+            _barWidth = Math.max(MIN_BAR_WIDTH, _barWidth);
         }
     }
 
