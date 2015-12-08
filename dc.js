@@ -1,4 +1,4 @@
-/*
+define(['d3'], function(d3) {/*
  *  Copyright 2012 the original author or authors.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-dc = {
+var dc = {
     version: "1.5.0",
     constants : {
         CHART_CLASS: "dc-chart",
@@ -3732,3 +3732,5 @@ dc.bubbleOverlay = function(root, chartGroup) {
 
     return _chart.anchor(parent, chartGroup);
 };
+return dc;
+});

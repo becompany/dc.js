@@ -25,6 +25,7 @@
     <target name="make" depends="clean, init">
         <echo>Compiling dc.js</echo>
         <concat destfile="dc.js">
+            <file file="src/requirejs-prefix.js"/>
             <file file="src/core.js"/>
             <file file="src/errors.js"/>
             <file file="src/utils.js"/>
@@ -46,6 +47,7 @@
             <file file="src/geo-choropleth-chart.js"/>
             <file file="src/bubble-overlay.js"/>
             <file file="src/row-chart.js"/>
+            <file file="src/requirejs-suffix.js"/>
         </concat>
         <echo>Compiling dc.min.js</echo>
         <exec executable="bash">

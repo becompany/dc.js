@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-dc = {
+var dc = {
     version: "1.5.0",
     constants : {
         CHART_CLASS: "dc-chart",
